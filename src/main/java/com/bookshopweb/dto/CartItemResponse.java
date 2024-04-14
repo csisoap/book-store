@@ -2,16 +2,21 @@ package com.bookshopweb.dto;
 
 import java.util.StringJoiner;
 
+
+// builder parttern
 public class CartItemResponse {
-    private final long id;
-    private final long cartId;
-    private final long productId;
-    private final String productName;
-    private final double productPrice;
-    private final double productDiscount;
-    private final int productQuantity;
-    private final String productImageName;
-    private final int quantity;
+    private long id;
+    private long cartId;
+    private long productId;
+    private String productName;
+    private double productPrice;
+    private double productDiscount;
+    private int productQuantity;
+    private String productImageName;
+    private int quantity;
+
+    public CartItemResponse() {
+    }
 
     public CartItemResponse(long id,
                             long cartId,
@@ -31,6 +36,51 @@ public class CartItemResponse {
         this.productQuantity = productQuantity;
         this.productImageName = productImageName;
         this.quantity = quantity;
+    }
+
+    public CartItemResponse setId(long id) {
+        this.id = id;
+        return this;
+    }
+
+    public CartItemResponse setCartId(long cartId) {
+        this.cartId = cartId;
+        return this;
+    }
+
+    public CartItemResponse setProductId(long productId) {
+        this.productId = productId;
+        return this;
+    }
+
+    public CartItemResponse setProductName(String productName) {
+        this.productName = productName;
+        return this;
+    }
+
+    public CartItemResponse setProductPrice(double productPrice) {
+        this.productPrice = productPrice;
+        return this;
+    }
+
+    public CartItemResponse setProductDiscount(double productDiscount) {
+        this.productDiscount = productDiscount;
+        return this;
+    }
+
+    public CartItemResponse setProductQuantity(int productQuantity) {
+        this.productQuantity = productQuantity;
+        return this;
+    }
+
+    public CartItemResponse setProductImageName(String imgName) {
+        this.productImageName = imgName;
+        return this;
+    }
+
+    public CartItemResponse setQuantity(int quantity) {
+        this.quantity = quantity;
+        return this;
     }
 
     public long getId() {
@@ -68,6 +118,8 @@ public class CartItemResponse {
     public int getQuantity() {
         return quantity;
     }
+
+
 
     @Override
     public String toString() {

@@ -3,6 +3,7 @@ package com.bookshopweb.dao;
 import java.util.List;
 import java.util.Optional;
 
+// method templates for DAO
 public interface DAO<T> {
     long insert(T t);
 

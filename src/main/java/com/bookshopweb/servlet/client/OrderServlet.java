@@ -72,12 +72,18 @@ public class OrderServlet extends HttpServlet {
                     }
                 }
 
-                OrderResponse orderResponse = new OrderResponse(
-                        order.getId(),
-                        order.getCreatedAt().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
-                        check(orderItemService.getProductNamesByOrderId(order.getId())),
-                        order.getStatus(),
-                        total + order.getDeliveryPrice());
+                OrderResponse orderResponse = new OrderResponse()
+                        .setId(order.getId())
+                        .setCreatedAt(order.getCreatedAt().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")))
+                        .setName(check(orderItemService.getProductNamesByOrderId(order.getId())))
+                        .setStatus(order.getStatus())
+                        .setTotal(total + order.getDeliveryPrice());
+
+//                        order.getId(),
+//                        order.getCreatedAt().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
+//                        check(orderItemService.getProductNamesByOrderId(order.getId())),
+//                        order.getStatus(),
+//                        total + order.getDeliveryPrice());
 
                 orderResponses.add(orderResponse);
             }

@@ -5,9 +5,9 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com</groupId>
-    <artifactId>BookShopWeb</artifactId>
+    <artifactId>book</artifactId>
     <version>1.0-SNAPSHOT</version>
-    <name>BookShopWeb</name>
+    <name>Book</name>
     <packaging>war</packaging>
 
     <properties>
@@ -77,6 +77,21 @@
             <version>23.0.0</version>
             <scope>compile</scope>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/commons-validator/commons-validator -->
+        <dependency>
+            <groupId>commons-validator</groupId>
+            <artifactId>commons-validator</artifactId>
+            <version>1.6</version>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/org.projectlombok/lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>1.18.30</version>
+            <scope>provided</scope>
+        </dependency>
+
+
     </dependencies>
 
     <build>

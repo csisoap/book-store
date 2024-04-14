@@ -2,12 +2,15 @@ package com.bookshopweb.servlet.client;
 
 import com.bookshopweb.beans.User;
 import com.bookshopweb.consts.Enums;
+import com.bookshopweb.dto.SignUpRequest;
 import com.bookshopweb.instance.ServiceFactory;
-import com.bookshopweb.service.ProductService;
+import com.bookshopweb.manager.AuthService;
+import com.bookshopweb.manager.impl.AuthServiceImpl;
 import com.bookshopweb.service.UserService;
 import com.bookshopweb.utils.HashingUtils;
 import com.bookshopweb.utils.Protector;
 import com.bookshopweb.utils.Validator;
+import com.bookshopweb.validator.impl.SignUpValidatorAdapter;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -22,7 +25,10 @@ import java.util.Optional;
 
 @WebServlet(name = "SignupServlet", value = "/signup")
 public class SignupServlet extends HttpServlet {
-    private final UserService userService = (UserService) ServiceFactory.getService(Enums.ServiceType.USER);
+
+    private final AuthService authService = new AuthServiceImpl(
+            new SignUpValidatorAdapter()
+    );
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
@@ -42,75 +48,29 @@ public class SignupServlet extends HttpServlet {
         values.put("address", request.getParameter("address"));
         values.put("policy", request.getParameter("policy"));
 
-        // Kiểm tra các parameter, lưu các vi phạm (nếu có) vào map violations
-        Map<String, List<String>> violations = new HashMap<>();
-        Optional<User> userFromServer = Protector.of(() -> userService.getByUsername(values.get("username")))
-                .get(Optional::empty);
-        violations.put("usernameViolations", Validator.of(values.get("username"))
-                .isNotNullAndEmpty()
-                .isNotBlankAtBothEnds()
-                .isAtMostOfLength(25)
-                .isNotExistent(userFromServer.isPresent(), "Tên đăng nhập")
-                .toList());
-        violations.put("passwordViolations", Validator.of(values.get("password"))
-                .isNotNullAndEmpty()
-                .isNotBlankAtBothEnds()
-                .isAtMostOfLength(32)
-                .toList());
-        violations.put("fullnameViolations", Validator.of(values.get("fullname"))
-                .isNotNullAndEmpty()
-                .isNotBlankAtBothEnds()
-                .toList());
-        violations.put("emailViolations", Validator.of(values.get("email"))
-                .isNotNullAndEmpty()
-                .isNotBlankAtBothEnds()
-                .hasPattern("^[^@]+@[^@]+\\.[^@]+$", "email")
-                .toList());
-        violations.put("phoneNumberViolations", Validator.of(values.get("phoneNumber"))
-                .isNotNullAndEmpty()
-                .isNotBlankAtBothEnds()
-                .hasPattern("^\\d{10,11}$", "số điện thoại")
-                .toList());
-        violations.put("genderViolations", Validator.of(values.get("gender"))
-                .isNotNull()
-                .toList());
-        violations.put("addressViolations", Validator.of(values.get("address"))
-                .isNotNullAndEmpty()
-                .isNotBlankAtBothEnds()
-                .toList());
-        violations.put("policyViolations", Validator.of(values.get("policy"))
-                .isNotNull()
-                .toList());
 
-        // Tính tổng các vi phạm sau kiểm tra (nếu có)
-        int sumOfViolations = violations.values().stream().mapToInt(List::size).sum();
+        SignUpRequest signUpRequest = SignUpRequest.builder()
+                .username(request.getParameter("username"))
+                .password(request.getParameter("password"))
+                .fullname(request.getParameter("fullname"))
+                .email(request.getParameter("email"))
+                .phoneNumber(request.getParameter("phoneNumber"))
+                .gender(request.getParameter("gender"))
+                .address(request.getParameter("address"))
+                .policy(request.getParameter("policy"))
+                .build();
+
         String successMessage = "Đã đăng ký thành công!";
         String errorMessage = "Đã có lỗi truy vấn!";
 
-        // Khi không có vi phạm trong kiểm tra các parameter
-        if (sumOfViolations == 0) {
-            User user = new User(
-                    0L,
-                    values.get("username"),
-                    HashingUtils.hash(values.get("password")),
-                    values.get("fullname"),
-                    values.get("email"),
-                    values.get("phoneNumber"),
-                    Protector.of(() -> Integer.parseInt(values.get("gender"))).get(0),
-                    values.get("address"),
-                    "CUSTOMER"
-            );
-            Protector.of(() -> userService.insert(user))
-                    .done(r -> request.setAttribute("successMessage", successMessage))
-                    .fail(e -> {
-                        request.setAttribute("values", values);
-                        request.setAttribute("errorMessage", errorMessage);
-                    });
-        } else {
-            // Khi có vi phạm
-            request.setAttribute("values", values);
-            request.setAttribute("violations", violations);
-        }
+        authService.signUp(signUpRequest)
+                .done((r) -> {
+                    request.setAttribute("successMessage", successMessage);
+                })
+                .fail((e) -> {
+                    request.setAttribute("values", values);
+                    request.setAttribute("errorMessage", errorMessage);
+                });
 
         request.getRequestDispatcher("/WEB-INF/views/signupView.jsp").forward(request, response);
     }

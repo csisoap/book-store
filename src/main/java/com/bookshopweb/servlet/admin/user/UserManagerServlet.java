@@ -3,7 +3,6 @@ package com.bookshopweb.servlet.admin.user;
 import com.bookshopweb.beans.User;
 import com.bookshopweb.consts.Enums;
 import com.bookshopweb.instance.ServiceFactory;
-import com.bookshopweb.service.ProductService;
 import com.bookshopweb.service.UserService;
 import com.bookshopweb.utils.Protector;
 

@@ -2,7 +2,11 @@ package com.bookshopweb.servlet.client;
 
 import com.bookshopweb.beans.User;
 import com.bookshopweb.consts.Enums;
+import com.bookshopweb.dto.ChangePasswordRequest;
 import com.bookshopweb.instance.ServiceFactory;
+import com.bookshopweb.manager.ChangePasswordService;
+import com.bookshopweb.manager.impl.ChangePasswordServiceImpl;
+import com.bookshopweb.manager.impl.ChangePasswordServiceProxyImpl;
 import com.bookshopweb.service.UserService;
 import com.bookshopweb.utils.HashingUtils;
 
@@ -17,7 +21,6 @@ import java.util.Map;
 
 @WebServlet(name = "ChangePassword", value = "/changePassword")
 public class ChangePasswordServlet extends HomeServlet {
-    private final UserService userService = (UserService) ServiceFactory.getService(Enums.ServiceType.USER);
 
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         request.getRequestDispatcher("WEB-INF/views/changePasswordView.jsp").forward(request, response);
@@ -25,26 +28,22 @@ public class ChangePasswordServlet extends HomeServlet {
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        Map<String, String> values = new HashMap<>();
-        values.put("currentPassword", request.getParameter("currentPassword"));
-        values.put("newPassword", request.getParameter("newPassword"));
-        values.put("newPasswordAgain", request.getParameter("newPasswordAgain"));
 
-        HttpSession session = request.getSession();
-        User user = (User) session.getAttribute("currentUser");
-
-        boolean currentPasswordEqualsUserPassword = HashingUtils.hash(values.get("currentPassword")).equals(user.getPassword());
-        boolean newPasswordEqualsNewPasswordAgain = values.get("newPassword").equals(values.get("newPasswordAgain"));
-
-        if (currentPasswordEqualsUserPassword && newPasswordEqualsNewPasswordAgain) {
-            String newPassword = HashingUtils.hash(values.get("newPassword"));
-            userService.changePassword(user.getId(), newPassword);
-            String successMessage = "Đổi mật khẩu thành công!";
-            request.setAttribute("successMessage", successMessage);
-        } else {
-            String errorMessage = "Đổi mật khẩu thất bại!";
-            request.setAttribute("errorMessage", errorMessage);
-        }
+        ChangePasswordRequest changePasswordRequest = new ChangePasswordRequest(
+                request.getParameter("currentPassword"),
+                request.getParameter("newPassword"),
+                request.getParameter("newPasswordAgain")
+        );
+        ChangePasswordService changePasswordService = new ChangePasswordServiceProxyImpl(request);
+        changePasswordService.change(changePasswordRequest)
+                .done((e) -> {
+                    String successMessage = "Đổi mật khẩu thành công!";
+                    request.setAttribute("successMessage", successMessage);
+                })
+                .fail((e) -> {
+                    String errorMessage = "Đổi mật khẩu thất bại!";
+                    request.setAttribute("errorMessage", errorMessage);
+                });
 
         request.getRequestDispatcher("/WEB-INF/views/changePasswordView.jsp").forward(request, response);
     }

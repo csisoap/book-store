@@ -2,10 +2,14 @@ package com.bookshopweb.servlet.client;
 
 import com.bookshopweb.beans.Order;
 import com.bookshopweb.beans.OrderItem;
+import com.bookshopweb.consts.Consts;
 import com.bookshopweb.consts.Enums;
 import com.bookshopweb.dto.ErrorMessage;
 import com.bookshopweb.dto.OrderRequest;
 import com.bookshopweb.dto.SuccessMessage;
+import com.bookshopweb.handle.ExpressShippingStrategy;
+import com.bookshopweb.handle.ShippingService;
+import com.bookshopweb.handle.StandardShippingStrategy;
 import com.bookshopweb.instance.ServiceFactory;
 import com.bookshopweb.service.CartService;
 import com.bookshopweb.service.OrderItemService;
@@ -39,13 +43,20 @@ public class CartServlet extends HttpServlet {
         // Lấy đối tượng orderRequest từ JSON trong request
         OrderRequest orderRequest = JsonUtils.get(request, OrderRequest.class);
 
+        // tính phí giao hàng
+        ShippingService shippingService = new ShippingService(new StandardShippingStrategy());
+        if (orderRequest.getDeliveryMethod() == Consts.DeliveryMethod.EXPRESS) {
+            shippingService.setShippingStrategy(new ExpressShippingStrategy());
+        }
+
+
         // Tạo order
         Order order = new Order(
                 0L,
                 orderRequest.getUserId(),
                 1,
                 orderRequest.getDeliveryMethod(),
-                orderRequest.getDeliveryPrice(),
+                shippingService.calculateShippingCost(),
                 LocalDateTime.now(),
                 null
         );

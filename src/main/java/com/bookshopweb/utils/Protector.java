@@ -5,7 +5,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-// command pattern
 // builder pattern
 public class Protector<R> {
     private R returnObject;

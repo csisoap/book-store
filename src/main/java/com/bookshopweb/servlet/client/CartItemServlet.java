@@ -10,6 +10,8 @@ import com.bookshopweb.dto.CartResponse;
 import com.bookshopweb.dto.ErrorMessage;
 import com.bookshopweb.dto.SuccessMessage;
 import com.bookshopweb.instance.ServiceFactory;
+import com.bookshopweb.manager.CartManager;
+import com.bookshopweb.manager.impl.CartManagerImpl;
 import com.bookshopweb.service.CartItemService;
 import com.bookshopweb.service.CartService;
 import com.bookshopweb.service.UserService;
@@ -31,68 +33,41 @@ import java.util.stream.Collectors;
 
 @WebServlet(name = "CartItemServlet", value = "/cartItem")
 public class CartItemServlet extends HttpServlet {
-    private final CartService cartService = (CartService) ServiceFactory.getService(Enums.ServiceType.CART);
-    private final CartItemService cartItemService = (CartItemService) ServiceFactory.getService(Enums.ServiceType.CART_ITEM);
-    private final UserService userService = (UserService) ServiceFactory.getService(Enums.ServiceType.USER);
+    private final CartManager cartManager = new CartManagerImpl();
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         // Lấy userId và đối tượng user từ database theo userId này
         long userId = Protector.of(() -> Long.parseLong(request.getParameter("userId"))).get(0L);
-        Optional<User> userFromServer = Protector.of(() -> userService.getById(userId)).get(Optional::empty);
+        cartManager.getCartItemByUserId(userId)
+                .done((cartItems) -> {
+                    long cartId = cartItems.isEmpty() ? 0 : cartItems.stream().findFirst().orElse(null).getCartId();
 
-        // Nếu userId là số nguyên dương và có hiện diện trong bảng user
-        if (userId > 0L && userFromServer.isPresent()) {
-            // Lấy đối tượng cart từ database theo userId
-            Optional<Cart> cartFromServer = Protector.of(() -> cartService.getByUserId(userId)).get(Optional::empty);
+                    List<CartItemResponse> cartItemResponses = cartItems.stream().map(cartItem -> new CartItemResponse()
+                                    .setId(cartItem.getId())
+                                    .setCartId(cartItem.getCartId())
+                                    .setProductId(cartItem.getProductId())
+                                    .setProductName(cartItem.getProduct().getName())
+                                    .setProductPrice(cartItem.getProduct().getPrice())
+                                    .setProductDiscount(cartItem.getProduct().getDiscount())
+                                    .setProductQuantity(cartItem.getProduct().getQuantity())
+                                    .setProductImageName(cartItem.getProduct().getImageName())
+                                    .setQuantity(cartItem.getQuantity())).
+                            collect(Collectors.toList());
 
-            // Nếu cart của user này đã có trong database
-            if (cartFromServer.isPresent()) {
-                long cartId = cartFromServer.get().getId();
-                List<CartItem> cartItems = Protector.of(() -> cartItemService.getByCartId(cartId)).get(ArrayList::new);
-
-                List<CartItemResponse> cartItemResponses = cartItems.stream().map(cartItem -> new CartItemResponse(
-                        cartItem.getId(),
-                        cartItem.getCartId(),
-                        cartItem.getProductId(),
-                        cartItem.getProduct().getName(),
-                        cartItem.getProduct().getPrice(),
-                        cartItem.getProduct().getDiscount(),
-                        cartItem.getProduct().getQuantity(),
-                        cartItem.getProduct().getImageName(),
-                        cartItem.getQuantity()
-                )).collect(Collectors.toList());
-
-                CartResponse cartResponse = new CartResponse(cartId, userId, cartItemResponses);
-                JsonUtils.out(response, cartResponse, HttpServletResponse.SC_OK);
-            } else {
-                CartResponse cartResponse = new CartResponse(0L, userId, Collections.emptyList());
-                JsonUtils.out(response, cartResponse, HttpServletResponse.SC_OK);
-            }
-        } else {
-            String errorMessage = "Đã có lỗi truy vấn!";
-            JsonUtils.out(response, new ErrorMessage(404, errorMessage), HttpServletResponse.SC_NOT_FOUND);
-        }
+                    CartResponse cartResponse = new CartResponse(cartId, userId, cartItemResponses);
+                    JsonUtils.out(response, cartResponse, HttpServletResponse.SC_OK);
+                })
+                .fail((e) -> {
+                    String errorMessage = "Đã có lỗi truy vấn!";
+                    JsonUtils.out(response, new ErrorMessage(404, errorMessage), HttpServletResponse.SC_NOT_FOUND);
+                });
     }
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         // Lấy đối tượng cartItemRequest từ JSON trong request
         CartItemRequest cartItemRequest = JsonUtils.get(request, CartItemRequest.class);
-
-        // Lấy đối tượng cart từ database theo userId từ cartItemRequest
-        Optional<Cart> cartFromServer = Protector.of(() -> cartService.getByUserId(cartItemRequest.getUserId()))
-                .get(Optional::empty);
-
-        // Nhận cartId từ cartFromServer (nếu đã có) hoặc cart mới (nếu chưa có)
-        long cartId;
-
-        if (cartFromServer.isPresent()) {
-            cartId = cartFromServer.get().getId();
-        } else {
-            Cart cart = new Cart(0L, cartItemRequest.getUserId(), LocalDateTime.now(), null);
-            cartId = Protector.of(() -> cartService.insert(cart)).get(0L);
-        }
 
         String successMessage = "Đã thêm sản phẩm vào giỏ hàng thành công!";
         String errorMessage = "Đã có lỗi truy vấn!";
@@ -105,38 +80,9 @@ public class CartItemServlet extends HttpServlet {
                 response,
                 new ErrorMessage(404, errorMessage),
                 HttpServletResponse.SC_NOT_FOUND);
-
-        // Nếu cart của user này đã có trong database (cardId lớn hơn O)
-        if (cartId > 0L) {
-            // Lấy đối tượng cartItem từ database theo cartId và productId của cartItemRequest
-            Optional<CartItem> cartItemFromServer = Protector.of(() -> cartItemService.getByCartIdAndProductId(
-                    cartId, cartItemRequest.getProductId()
-            )).get(Optional::empty);
-
-            // Nếu cartItem của cartId và productId này đã có trong database
-            if (cartItemFromServer.isPresent()) {
-                CartItem cartItem = cartItemFromServer.get();
-                cartItem.setQuantity(cartItem.getQuantity() + cartItemRequest.getQuantity());
-                cartItem.setUpdatedAt(LocalDateTime.now());
-                Protector.of(() -> cartItemService.update(cartItem))
-                        .done(r -> doneFunction.run())
-                        .fail(e -> failFunction.run());
-            } else {
-                CartItem cartItem = new CartItem(
-                        0L,
-                        cartId,
-                        cartItemRequest.getProductId(),
-                        cartItemRequest.getQuantity(),
-                        LocalDateTime.now(),
-                        null
-                );
-                Protector.of(() -> cartItemService.insert(cartItem))
-                        .done(r -> doneFunction.run())
-                        .fail(e -> failFunction.run());
-            }
-        } else {
-            failFunction.run();
-        }
+        cartManager.createItem(cartItemRequest)
+                .done(r -> doneFunction.run())
+                .fail(e -> failFunction.run());
     }
 
     @Override
@@ -144,7 +90,6 @@ public class CartItemServlet extends HttpServlet {
         CartItemRequest cartItemRequest = JsonUtils.get(request, CartItemRequest.class);
 
         long cartItemId = Protector.of(() -> Long.parseLong(request.getParameter("cartItemId"))).get(0L);
-        Optional<CartItem> cartItemFromServer = Protector.of(() -> cartItemService.getById(cartItemId)).get(Optional::empty);
 
         String successMessage = "Đã cập nhật số lượng của sản phẩm thành công!";
         String errorMessage = "Đã có lỗi truy vấn!";
@@ -158,11 +103,8 @@ public class CartItemServlet extends HttpServlet {
                 new ErrorMessage(404, errorMessage),
                 HttpServletResponse.SC_NOT_FOUND);
 
-        if (cartItemId > 0L && cartItemFromServer.isPresent()) {
-            CartItem cartItem = cartItemFromServer.get();
-            cartItem.setQuantity(cartItemRequest.getQuantity());
-            cartItem.setUpdatedAt(LocalDateTime.now());
-            Protector.of(() -> cartItemService.update(cartItem))
+        if (cartItemId > 0L) {
+            cartManager.updateItem(cartItemId, cartItemRequest)
                     .done(r -> doneFunction.run())
                     .fail(e -> failFunction.run());
         } else {
@@ -187,7 +129,7 @@ public class CartItemServlet extends HttpServlet {
                 HttpServletResponse.SC_NOT_FOUND);
 
         if (cartItemId > 0L) {
-            Protector.of(() -> cartItemService.delete(cartItemId))
+            cartManager.deleteItem(cartItemId)
                     .done(r -> doneFunction.run())
                     .fail(e -> failFunction.run());
         } else {

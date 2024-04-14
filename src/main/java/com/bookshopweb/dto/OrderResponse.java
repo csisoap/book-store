@@ -2,6 +2,7 @@ package com.bookshopweb.dto;
 
 import java.util.StringJoiner;
 
+// builder parttern
 public class OrderResponse {
     private long id;
     private String createdAt;
@@ -9,6 +10,8 @@ public class OrderResponse {
     private int status;
     private double total;
 
+    public OrderResponse() {
+    }
     public OrderResponse(long id, String createdAt, String name, int status, double total) {
         this.id = id;
         this.createdAt = createdAt;
@@ -21,40 +24,45 @@ public class OrderResponse {
         return id;
     }
 
-    public void setId(long id) {
+    public OrderResponse setId(long id) {
         this.id = id;
+        return this;
     }
 
     public String getCreatedAt() {
         return createdAt;
     }
 
-    public void setCreatedAt(String createdAt) {
+    public OrderResponse setCreatedAt(String createdAt) {
         this.createdAt = createdAt;
+        return this;
     }
 
     public String getName() {
         return name;
     }
 
-    public void setName(String name) {
+    public OrderResponse setName(String name) {
         this.name = name;
+        return this;
     }
 
     public int getStatus() {
         return status;
     }
 
-    public void setStatus(int status) {
+    public OrderResponse setStatus(int status) {
         this.status = status;
+        return this;
     }
 
     public double getTotal() {
         return total;
     }
 
-    public void setTotal(double total) {
+    public OrderResponse setTotal(double total) {
         this.total = total;
+        return this;
     }
 
     @Override
